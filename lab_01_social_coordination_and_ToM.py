@@ -7,7 +7,7 @@ start_time = time.time()
 
 
 # EXERCISE 01:
-## Use the command help(ts.PayoffMatrix) to explore what Game Theory games are pre-specified in the tomsup package. Print and investigate each of these pay-off matrices. For each one: Write down whether they are competitive or cooperative in nature. Also explain why.
+## Use the command help(ts.PayoffMatrix) (see p. 11 of Waade et al., 2022) to explore what Game Theory games are pre-specified in the tomsup package. Print and investigate each of these pay-off matrices. For each one: Write down whether they are competitive or cooperative in nature. Also explain why.
 
 # ENVISIONED ANSWER TO EXERCISE 01:
 
@@ -70,6 +70,10 @@ def who_won(results_df):
         return("agent1")
     else:
         return("tie")
+
+
+# EXERCISE 05:
+
 
 
 
