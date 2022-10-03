@@ -86,7 +86,7 @@ class Inflection:
   """
   def __init__(self, interactions=0, successes=0, weight=np.nan, last_interaction=np.nan):
     """
-
+    Initialises Inflection object
     :param interactions: int: number of interactions agents has had about this lemma
     :param successes: int: number of successful interactions agent has had about this lemma
     :param weight: float: number of successes divided by number of interactions. Initialised as NAN to indicate pairing is non-existent
@@ -111,11 +111,11 @@ class Inflection:
 
 class Lemma:
   """
-
+  Lemma class
   """
   def __init__(self, lemma_index, tokens, seen, inflections):
     """
-
+    Initialises Lemma object
     :param lemma_index: int: index of the lemma
     :param tokens: int: number of times the agent has encountered this lemma
     :param seen: Boolean: whether the agent has encountered this lemma before
@@ -132,7 +132,7 @@ class Lemma:
     """
     self.tokens = 0
     self.seen = False
-    self.inflections([Inflection() for i in range(n_inflections)])  # n_inflections is global variable
+    self.inflections = [Inflection() for i in range(n_inflections)]  # n_inflections is global variable
 
   def add_inflection(self, infl_index, outcome, timestep):
     """
@@ -165,9 +165,9 @@ class Lemma:
 
   def has_inflection(self, infl_index):
     """
-    Checks whether agent already has a specific inflection for this lemma
+    Checks whether agent already has a specific inflection (indicated by infl_index) for this lemma
     :param infl_index: int: index of the inflection in self.inflections
-    :return: Boolean: True if agent already has a specific inflection for this lemma, False if not
+    :return: Boolean: True if agent already has this specific inflection for this lemma, False if not
     """
     if self.inflections[infl_index].interactions > 0:
       return True
@@ -190,7 +190,7 @@ class Lemma:
 
   def has_any_inflection(self):
     """
-    Checks whether this lemma has any inflections yet (this is considered to be the case if any of the possible inflections have come up in an interaction before).  #TODO: Check whether it really makes sense to assume that if self.inflections[i].interactions > 0, this means that this lemma has an existing inflection.
+    Checks whether this lemma has any inflections yet (this is considered to be the case if any of the possible inflections have come up in an interaction about this lemma before).  #TODO: Check whether it really makes sense to assume that if self.inflections[i].interactions > 0, this means that this lemma has an existing inflection.
     :return: Boolean: False if lemma object doesn't have any inflections yet; True if it does
     """
     interactions_per_inflection = np.array([self.inflections[i].interactions for i in range(len(self.inflections))])
@@ -210,66 +210,113 @@ class Lemma:
         self.inflections[i].empty_inflection()
 
 
-my_inflections_list = [Inflection() for i in range(n_inflections)]
-lemmas_list = []
-for i in range(n_lemmas):
-  lemma = Lemma(0, 0, False, my_inflections_list)
-  lemmas_list.append(lemma)
-
-
-for i in range(300):
-  lemma_index = np.random.choice(vocabulary)
-  lemma = lemmas_list[lemma_index]
-  inflection_frequencies = np.array([0.01, 0.3, 0.2, 3, 0.5, 4, 0.2, 1, 0.02, 2, 0.4, 0.08])
-  # np.random.shuffle(inflection_frequencies)
-  inflection_probs = np.divide(inflection_frequencies.astype(float), np.sum(inflection_frequencies))
-  infl_index = np.random.choice(np.arange(n_inflections), p=inflection_probs)
-  outcome = np.random.randint(2)
-  timestep = i
-  lemma.update_inflection(infl_index, outcome, timestep)
-
-
-print('')
-print('')
-random_lemma = np.random.choice(lemmas_list)
-print("random_lemma.__dict__ is:")
-print(random_lemma.__dict__)
-
-best_infl_index = random_lemma.get_best()
-print('')
-print('')
-print("best_infl_index is:")
-print(best_infl_index)
-
-has_inflection = random_lemma.has_any_inflection()
-print('')
-print('')
-print("has_inflection is:")
-print(has_inflection)
-
-timestep = 300
-random_lemma.purge(timestep)
-print("random_lemma.__dict__ is:")
-print(random_lemma.__dict__)
+# my_inflections_list = [Inflection() for i in range(n_inflections)]
+# lemmas_list = []
+# for i in range(n_lemmas):
+#   lemma = Lemma(0, 0, False, my_inflections_list)
+#   lemmas_list.append(lemma)
+#
+#
+# for i in range(300):
+#   lemma_index = np.random.choice(vocabulary)
+#   lemma = lemmas_list[lemma_index]
+#   inflection_frequencies = np.array([0.01, 0.3, 0.2, 3, 0.5, 4, 0.2, 1, 0.02, 2, 0.4, 0.08])
+#   # np.random.shuffle(inflection_frequencies)
+#   inflection_probs = np.divide(inflection_frequencies.astype(float), np.sum(inflection_frequencies))
+#   infl_index = np.random.choice(np.arange(n_inflections), p=inflection_probs)
+#   outcome = np.random.randint(2)
+#   timestep = i
+#   lemma.update_inflection(infl_index, outcome, timestep)
+#
+#
+# print('')
+# print('')
+# random_lemma = np.random.choice(lemmas_list)
+# print("random_lemma.__dict__ is:")
+# print(random_lemma.__dict__)
+#
+# best_infl_index = random_lemma.get_best()
+# print('')
+# print('')
+# print("best_infl_index is:")
+# print(best_infl_index)
+#
+# has_inflection = random_lemma.has_any_inflection()
+# print('')
+# print('')
+# print("has_inflection is:")
+# print(has_inflection)
+#
+# timestep = 300
+# random_lemma.purge(timestep)
+# print("random_lemma.__dict__ is:")
+# print(random_lemma.__dict__)
 
 
 
 class Agent:
-  def __init__(self, is_active=False, tokens=0, type_generalise=False, k_threshold=k_proficiency, memory_window=d_memory):
-    self.is_active = is_active  # initial value: False
-    self.tokens = tokens  # initial value: 0
-    self.type_generalise = type_generalise  # initial value: False (i.e., agents are initialised as token generalisers)
-    self.k_threshold = k_threshold  # default: k_proficiency (is global variable; see parameter settings)
-    self.memory_window = memory_window  # default: d_memory (is global variable; see parameter settings)
+  """
+  Agent class
+  """
+  def __init__(self, tokens=0, k_threshold=k_proficiency, memory_window=d_memory, type_generalise=False, is_active=False):
+    """
+    Initialises Agent object
+    :param tokens: int: number of tokens. Initial value: 0 #TODO: figure out what this attribute is/does exactly.
+    :param k_threshold: int: token threshold that determines proficiency. Default: k_proficiency (=global variable)
+    :param memory_window: int: no. of timesteps after which agent forgets pairing. Default: d_memory (=global variable)
+    :param type_generalise: Boolean: False = agent is token-generaliser; True = type-generaliser. Initial value: False
+    :param is_active: Boolean: Initial value: False #TODO figure out what this attribute is/does exactly. When updated?
+    """
+    self.tokens = tokens
+    empty_inflections = [Inflection() for i in range(n_inflections)]  # used for initiliasing empty vocabulary below
+    self.vocabulary = [Lemma(0, 0, False, empty_inflections) for x in range(n_lemmas)]  # initialise empty vocabulary
+    self.k_threshold = k_threshold
+    self.memory_window = memory_window
+    self.type_generalise = type_generalise
+    self.is_active = is_active
 
   def reset_agent(self):
-    pass
+    """
+    Resets agent's attributes to initial/empty
+    :return: resets agent's attributes; doesn't return anything
+    """
+    self.is_active = True
+    self.tokens = 0
+    self.type_generalise = False
+    for lemma in self.vocabulary:
+      lemma.reset_lemma()
 
-  def has_inflections(self):
-    pass
+  def has_inflections(self, lemma_index):
+    """
+    Checks whether agent has any inflections for a particular lemma (indicated by lemma_index)
+    :param lemma_index: int: index of particular Lemma object in self.vocabulary
+    :return: Boolean: True if agent has any inflections for this particular lemma, False if not
+    """
+    return self.vocabulary[lemma_index].has_any_inflection()
 
-  def update_lemma(self):
-    pass
+  def update_lemma(self, lemma_index, infl_index, outcome, timestep):
+    """
+    Update the entry for a particular lemma
+    :param lemma_index: int: index of the lemma (in the agent's self.vocabulary attribute)
+    :param infl_index: int: index of the inflection
+    :param outcome: int: 1 if success (i.e., if receiver has lemma-inflection pairing in inventory), 0 if failure
+    :param timestep: int: timestep of current interaction
+    :return: updates lemma in agent's vocabulary; doesn't return anything
+    """
+    self.tokens += 1
+    # If lemma-inflection pairing exists, update the weighting according to the outcome of the interaction:
+    if self.vocabulary[lemma_index].has_inflection(infl_index):
+      self.vocabulary[lemma_index].update_inflection(infl_index, outcome, timestep)
+    # If lemma-inflection pairing doesn't exist yet, create it:
+    else:
+      self.vocabulary[lemma_index].add_inflection(infl_index, outcome, timestep)
+    # Purge the inflections of the lemma (i.e., remove inflections that haven't been used for d_memory timesteps)
+    self.vocabulary[lemma_index].purge(timestep)
+    # Finally, set the agent's self.type_generalise attribute depending on how many tokens it has encountered in total
+    if self.tokens > self.k_threshold:
+      self.type_generalise = True
+    else:
+      self.type_generalise = False
 
   def receive(self):
     pass
@@ -285,3 +332,31 @@ class Agent:
 
   def get_inflection(self):
     pass
+
+
+my_agent = Agent()
+print('')
+print('')
+print("my_agent.__dict__ is:")
+print(my_agent.__dict__)
+
+
+
+
+my_agent.reset_agent()
+print('')
+print('')
+print("my_agent.__dict__ AFTER RESETTING is:")
+print(my_agent.__dict__)
+
+
+for lemma_index in range(n_lemmas):
+  print('')
+  print("lemma_index is:")
+  print(lemma_index)
+  lemma = my_agent.vocabulary[lemma_index]
+  print("lemma.__dict__ is:")
+  print(lemma.__dict__)
+  has_inflections = my_agent.has_inflections(lemma_index)
+  print("has_inflections is:")
+  print(has_inflections)
