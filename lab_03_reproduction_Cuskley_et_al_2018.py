@@ -333,14 +333,14 @@ class Agent:
     """
     max_tokens = np.zeros(10)  # TODO: Figure out what the idea behind this max_tokens array is
     for lemma_index in range(len(self.vocabulary)):
-      for i in range(len(10)):  # TODO: Where does range(len(10)) come from? Shouldn't this loop over all inflections?
+      for i in range(10):  # TODO: Where does range(len(10)) come from? Shouldn't this loop over all inflections?
         max_tokens[i] += self.vocabulary[lemma_index].inflections[i].successes
     print("max_tokens are:")
     print(max_tokens)
     max_successes = np.amax(max_tokens)
     print("max_successes is:")
     print(max_successes)
-    max_token_indices = np.where(max_tokens==max_successes)
+    max_token_indices = np.where(max_tokens==max_successes)[0]
     print("max_token_indices is:")
     print(max_token_indices)
     max_index = np.random.choice(max_token_indices)
@@ -362,7 +362,7 @@ class Agent:
     max_values = np.amax(max_types)
     print("max_values is:")
     print(max_values)
-    max_token_indices = np.where(max_types==max_values)
+    max_token_indices = np.where(max_types==max_values)[0]
     print("max_token_indices is:")
     print(max_token_indices)
     max_index = np.random.choice(max_token_indices)
@@ -415,7 +415,7 @@ class Agent:
         return 0
     # If agent doesn't have any inflections for this lemma, generate an inflection based on generalisation processes
     else:
-      guess = self.generate_inflection(lemma_index)
+      guess = self.generate_inflection()
       print("guess is:")
       print(guess)
       # If the newly generated inflection matches the inflection in question, return success:
@@ -432,8 +432,6 @@ print('')
 print('')
 print("my_agent.__dict__ is:")
 print(my_agent.__dict__)
-
-
 
 
 my_agent.reset_agent()
