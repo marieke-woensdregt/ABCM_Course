@@ -126,7 +126,7 @@ class Lemma:
     self.seen = seen
     self.inflections = inflections
 
-  def reset_lemma(self): #TODO: Check whether this method can be made obsolete by just having default input arguments
+  def reset_lemma(self):  # TODO: Check whether this method can be made obsolete by just having default input arguments
     """
     Initialises/resets all attributes of the lemma object
     """
@@ -174,14 +174,14 @@ class Lemma:
     else:
       return False
 
-  def get_best(self):  #TODO: Looks like the Cuskley et al. implementation in C++ just selects the first inflection in the array that has the highest weight
+  def get_best(self):  # TODO: Looks like the Cuskley et al. implementation in C++ just selects the first inflection in the array that has the highest weight
     """
     Finds indices of inflections with highest weight for this lemma
-    :return: int: index of highest-weighted inflection. If multiple inflections have the maximum weight, one of these is selected randomly.
+    :return: int: index of highest-weighted inflection. If multiple with max weight, one of these is selected randomly.
     """
     weight_array = np.array([self.inflections[i].weight for i in range(len(self.inflections))])
     if np.isnan(weight_array).all() == True:  # if only NANs in the array, just choose an index randomly
-      max_index = np.random.choice(np.arange(len(self.inflections)))  #TODO: Looks like in the Cuskley et al. implementation in C++, this method returns -1 as an index if none of the weights have been set yet...
+      max_index = np.random.choice(np.arange(len(self.inflections)))  # TODO: Looks like in the Cuskley et al. implementation in C++, this method returns -1 as an index if none of the weights have been set yet...
     else:
       max_weight = np.nanmax(weight_array)
       max_indices = np.where(weight_array==max_weight)[0]
@@ -190,7 +190,7 @@ class Lemma:
 
   def has_any_inflection(self):
     """
-    Checks whether this lemma has any inflections yet (this is considered to be the case if any of the possible inflections have come up in an interaction about this lemma before).  #TODO: Check whether it really makes sense to assume that if self.inflections[i].interactions > 0, this means that this lemma has an existing inflection.
+    Checks whether this lemma has any inflections yet (this is considered to be the case if any of the possible inflections have come up in an interaction about this lemma before).  # TODO: Check whether it really makes sense to assume that if self.inflections[i].interactions > 0, this means that this lemma has an existing inflection.
     :return: Boolean: False if lemma object doesn't have any inflections yet; True if it does
     """
     interactions_per_inflection = np.array([self.inflections[i].interactions for i in range(len(self.inflections))])
@@ -261,11 +261,11 @@ class Agent:
   def __init__(self, tokens=0, k_threshold=k_proficiency, memory_window=d_memory, type_generalise=False, is_active=False):
     """
     Initialises Agent object
-    :param tokens: int: number of tokens. Initial value: 0 #TODO: figure out what this attribute is/does exactly.
+    :param tokens: int: number of tokens. Initial value: 0  # TODO: figure out what this attribute is/does exactly.
     :param k_threshold: int: token threshold that determines proficiency. Default: k_proficiency (=global variable)
     :param memory_window: int: no. of timesteps after which agent forgets pairing. Default: d_memory (=global variable)
     :param type_generalise: Boolean: False = agent is token-generaliser; True = type-generaliser. Initial value: False
-    :param is_active: Boolean: Initial value: False #TODO figure out what this attribute is/does exactly. When updated?
+    :param is_active: Boolean: Initial value: False  # TODO figure out what this attribute is/does exactly. When updated?
     """
     self.tokens = tokens
     empty_inflections = [Inflection() for i in range(n_inflections)]  # used for initiliasing empty vocabulary below
@@ -318,20 +318,113 @@ class Agent:
     else:
       self.type_generalise = False
 
-  def receive(self):
-    pass
-
-  def get_best(self):
-    pass
+  def get_best(self, lemma_index):
+    """
+    Get best (i.e., heighest-weighted) inflection for this lemma
+    :param lemma_index: int: index of the lemma (in the agent's self.vocabulary attribute)
+    :return: int: index of best (i.e., heighest-weighted) inflection for this lemma
+    """
+    return self.vocabulary[lemma_index].get_best()
 
   def get_token_best(self):
-    pass
+    """
+    Token-generalise: Look across vocabulary and extend rule that was used most frequently across all tokens of any type
+    :return: int: index of inflection used across most *tokens*
+    """
+    max_tokens = np.zeros(10)  # TODO: Figure out what the idea behind this max_tokens array is
+    for lemma_index in range(len(self.vocabulary)):
+      for i in range(len(10)):  # TODO: Where does range(len(10)) come from? Shouldn't this loop over all inflections?
+        max_tokens[i] += self.vocabulary[lemma_index].inflections[i].successes
+    print("max_tokens are:")
+    print(max_tokens)
+    max_successes = np.amax(max_tokens)
+    print("max_successes is:")
+    print(max_successes)
+    max_token_indices = np.where(max_tokens==max_successes)
+    print("max_token_indices is:")
+    print(max_token_indices)
+    max_index = np.random.choice(max_token_indices)
+    print("max_index is:")
+    print(max_index)
+    return max_index
 
   def get_type_best(self):
-    pass
+    """
+    Type-generalise: Look across vocabulary and extend the rule which applies to the most types in agent's vocabulary
+    :return: int: index of inflection used across most *types*
+    """
+    max_types = np.zeros(10)  # TODO: Figure out what the idea behind this max_types array is
+    for lemma_index in range(len(self.vocabulary)):
+      best_inflection = self.vocabulary[lemma_index].get_best()
+      max_types[best_inflection] += 1
+    print("max_types are:")
+    print(max_types)
+    max_values = np.amax(max_types)
+    print("max_values is:")
+    print(max_values)
+    max_token_indices = np.where(max_types==max_values)
+    print("max_token_indices is:")
+    print(max_token_indices)
+    max_index = np.random.choice(max_token_indices)
+    print("max_index is:")
+    print(max_index)
+    return max_index
 
-  def get_inflection(self):
-    pass
+  def generate_inflection(self):
+    """
+    If a lemma has no inflections, generate an inflection based on generalisation processes
+    :return: int: index of newly generated (/generalised) inflection
+    """
+    inflection_utterance = np.nan
+    # If self.type_generalise is True (= when agent has exceeded k_threshold), find inflection used for most types:
+    if self.type_generalise:
+      inflection_utterance = self.get_type_best()
+      # If preferred generalisation process doesn't deliver an inflection, try other method instead (token-generalise):
+      if np.isnan(inflection_utterance):
+        inflection_utterance = self.get_token_best()
+    # If self.type_generalise is False (= when agent not yet reached k_threshold), find inflection used for most tokens:
+    else:
+      inflection_utterance = self.get_token_best()
+      # If preferred generalisation process doesn't deliver an inflection, try other method instead (type-generalise):
+      if np.isnan(inflection_utterance):
+        inflection_utterance = self.get_type_best()
+    # If agent has no inflections in vocabulary, they will choose a random inflection from the predefined set of 12:
+    if np.isnan(inflection_utterance):
+      inflection_utterance = np.random.choice(np.arange(n_inflections))
+    return inflection_utterance
+
+  def receive(self, lemma_index, infl_index, timestep):
+    """
+    Take inflection in as receiver and update lemmas in vocabulary accordingly
+    :param lemma_index: int: index of the lemma (in the agent's self.vocabulary attribute)
+    :param infl_index: int: index of the inflection
+    :param timestep: int: timestep of current interaction
+    :return: Boolean: 1 if interaction is success (= lemma-inflection pairing is in receiver's vocabulary), 0 otherwise
+    """
+    print('')
+    print('')
+    print("This is the .receive() method of the Agent class:")
+    # If agent has any inflections for this lemma:
+    if self.has_inflections(lemma_index):
+      # If the agent has this particular inflection for this lemma --- no matter the weight --- return success
+      if self.vocabulary[lemma_index].has_inflection(infl_index):
+        self.update_lemma(lemma_index, infl_index, 1, timestep)
+        return 1
+      else:
+        self.update_lemma(lemma_index, infl_index, 0, timestep)
+        return 0
+    # If agent doesn't have any inflections for this lemma, generate an inflection based on generalisation processes
+    else:
+      guess = self.generate_inflection(lemma_index)
+      print("guess is:")
+      print(guess)
+      # If the newly generated inflection matches the inflection in question, return success:
+      if guess == infl_index:
+        self.update_lemma(lemma_index, infl_index, 1, timestep)
+        return 1
+      else:
+        self.update_lemma(lemma_index, infl_index, 0, timestep)
+        return 0
 
 
 my_agent = Agent()
@@ -350,6 +443,7 @@ print("my_agent.__dict__ AFTER RESETTING is:")
 print(my_agent.__dict__)
 
 
+timestep = 10
 for lemma_index in range(n_lemmas):
   print('')
   print("lemma_index is:")
@@ -360,3 +454,7 @@ for lemma_index in range(n_lemmas):
   has_inflections = my_agent.has_inflections(lemma_index)
   print("has_inflections is:")
   print(has_inflections)
+  for infl_index in range(n_inflections):
+    my_agent.receive(lemma_index, infl_index, timestep)
+print("my_agent.__dict__ AFTER UPDATING is:")
+print(my_agent.__dict__)
