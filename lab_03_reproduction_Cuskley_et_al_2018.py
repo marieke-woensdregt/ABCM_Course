@@ -447,14 +447,16 @@ class Simulation:
 	def __init__(self):
 		self.population = [Agent for x in range(3000)]  # Create initial pop, plus "dormant" agents to allow for growth
 
-	def interacation(self, producer, receiver, lemma, current_timestep):
+	def interaction(self, producer, receiver, lemma, current_timestep):
 		"""
 		Run single interaction between producer and receiver
-		:param producer:
-		:param receiver:
-		:param lemma:
-		:param current_timestep:
-		:return:
+		:param producer: int: index of producer agent in self.population
+		:param receiver: int: index of receiver agent in self.population
+		:param lemma: int: index of lemma in agent.vocabulary
+		:param current_timestep: int: current timestep
+		:return: updates the lemma in the producer's and receiver's vocabulary based on how the interaction goes,
+		and global_inflections variable, which keeps track of frequency of each inflection throughout the simulation;
+		doesn't return anything
 		"""
 		if self.population[producer].has_inflections(lemma):
 			utterance = self.population[producer].get_best(lemma)
@@ -466,7 +468,21 @@ class Simulation:
 		global_inflectons[utterance] += 1  # global_inflections is a global variable
 
 	def replace_agent(self):
-		pass
+		"""
+		Randomly selects an agent from the population and resets its attributes
+		(equivalent to removing the selected agent and adding a new agent)
+		:return: updates self.population by resetting the attributes of the selected agent; doesn't return anything
+		"""
+		print('')
+		print('')
+		print("This is the replace_agent() method of the Simulation class:")
+		chosen_one = np.random.choice(self.population)
+		print("chosen_one is:")
+		print(chosen_one)
+		print("chosen_one.__dict__ is:")
+		print(chosen_one.__dict__)
+		chosen_one.reset_agent()
+
 
 	def add_agent(self):
 		pass
@@ -479,4 +495,4 @@ class Simulation:
 
 	def run_simulation(self):
 		for i in range(pop_size):  # pop_size is global variable
-			self.population[i].isActive = True
+			self.population[i].is_active = True
