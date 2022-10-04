@@ -5,7 +5,7 @@ import seaborn as sns
 
 
 ###################### PARAMETER SETTINGS: ######################
-n_runs = 2  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
+n_runs = 1  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
 pop_size = 20  # int: initial population size. Cuskley et al. (2018) used 20 for small population and 100 for large pop
 n_lemmas = 28  # int: number of lemmas. Cuskley et al. (2018) used 28
 n_tokens = 500  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
@@ -303,24 +303,13 @@ class Agent:
 		Token-generalise: Look across vocab and extend rule that was used most frequently across all tokens of any type
 		:return: int: index of inflection used across most *tokens*
 		"""
-		print('')
-		print('')
-		print('This is the get_token_best() method of the Agent class:')
-		max_tokens = np.zeros(10)  # TODO: Figure out what the idea behind this max_tokens array is
+		max_tokens = np.zeros(n_inflections)  # TODO: Figure out why C++ code of Cuskley et al. (2018) uses 10 instead of 12 here
 		for lemma_index in range(len(self.vocabulary)):
-			for i in range(10):  # TODO: Where does range(len(10)) come from? Shouldn't this loop over all inflections?
+			for i in range(n_inflections):
 				max_tokens[i] += self.vocabulary[lemma_index].inflections[i].successes
-		print("max_tokens are:")
-		print(max_tokens)
 		max_successes = np.amax(max_tokens)
-		print("max_successes is:")
-		print(max_successes)
 		max_token_indices = np.where(max_tokens == max_successes)[0]
-		print("max_token_indices is:")
-		print(max_token_indices)
 		max_index = np.random.choice(max_token_indices)
-		print("max_index is:")
-		print(max_index)
 		return max_index
 
 	def get_type_best(self):
@@ -330,8 +319,8 @@ class Agent:
 		"""
 		print('')
 		print('')
-		print('This is the get_type_best() method of the Agent class:')
-		max_types = np.zeros(10)  # TODO: Figure out what the idea behind this max_types array is
+		print('WOOOOHOOOO!! This is the get_type_best() method of the Agent class:')
+		max_types = np.zeros(n_inflections)  # TODO: Figure out why C++ code of Cuskley et al. (2018) uses 10 instead of 12 here
 		for lemma_index in range(len(self.vocabulary)):
 			best_inflection = self.vocabulary[lemma_index].get_best()
 			max_types[best_inflection] += 1
@@ -356,10 +345,19 @@ class Agent:
 		inflection_utterance = np.nan
 		# If self.type_generalise is True (= when agent has exceeded k_threshold), find inflection used for most types
 		if self.type_generalise:
+			print('')
+			print('')
+			print("This is the generate_inflection() method of the Agent class")
+			print("self.type_generalise is True!")
 			inflection_utterance = self.get_type_best()
+			print("inflection_utterance after type-generalising is:")
+			print(inflection_utterance)
 			# If preferred generalisation process doesn't provide inflection, try other method (token-generalise)
 			if np.isnan(inflection_utterance):
+				print("apparently inflection after type-generalising is NAN")
 				inflection_utterance = self.get_token_best()
+				print("inflection_utterance after token-generalising is:")
+				print(inflection_utterance)
 		# If self.type_generalise is False (=agent hasn't reached k_threshold yet) find inflection used for most tokens
 		else:
 			inflection_utterance = self.get_token_best()
@@ -390,12 +388,7 @@ class Agent:
 				return 0
 		# If agent doesn't have any inflections for this lemma, generate inflection based on generalisation processes
 		else:
-			guess = self.generate_inflection()
-			print('')
-			print('')
-			print("This is the .receive() method of the Agent class:")
-			print("guess is:")
-			print(guess)
+			guess = self.generate_inflection()  # TODO: Check whether this makes sense
 			# If the newly generated inflection matches the inflection in question, return success:
 			if guess == infl_index:
 				self.update_lemma(lemma_index, infl_index, 1, timestep)
@@ -482,16 +475,8 @@ class Simulation:
 		"""
 		# Generate random float from uniform dist. [0.0, 1.0); if float <= r_replacement probability: reset random agent
 		if np.random.random() <= r_replacement:
-			print('')
-			print('')
-			print("This is the replace_agent() method of the Simulation class:")
-			print('YAY! np.random.random() <= r_replacement')
 			chosen_one_index = np.random.choice(np.arange(self.running_popsize - 1))
-			print("self.population[chosen_one_index].__dict__ BEFORE RESETTING is:")
-			print(self.population[chosen_one_index].__dict__)
 			self.population[chosen_one_index].reset_agent()
-			print("self.population[chosen_one_index].__dict__ AFTER RESETTING is:")
-			print(self.population[chosen_one_index].__dict__)
 
 	def add_agent(self):
 		"""
@@ -499,16 +484,9 @@ class Simulation:
 		:return: updates self.population by adding a new agent (by setting .is_active to True); doesn't return anything
 		"""
 		if np.random.random() <= g_growth:
-			print('')
-			print('')
-			print("This is the add_agent() method of the Simulation class:")
-			print('YAY! np.random.random() <= g_growth')
 			self.running_popsize += 1
-			print("self.population[self.running_popsize - 1].__dict__ BEFORE UPDATING")
-			print(self.population[self.running_popsize - 1].__dict__)
+			# Take next of "dormant" agents in line and turn its .is_active attribute to True:
 			self.population[self.running_popsize-1].is_active = True
-			print("self.population[self.running_popsize - 1].__dict__ AFTER UPDATING")
-			print(self.population[self.running_popsize - 1].__dict__)
 
 	def timestep(self, current_timestep):
 		"""
@@ -540,20 +518,71 @@ class Simulation:
 			self.all_tokens += 1
 			vocab_index += 1
 
-	def inflections_in_vocab(self):  # counts inflections for whole population
-		pass
-		return
+	def inflections_in_vocab(self):
+		"""
+		Counts total number of inflections present in population
+		:return: int: total number of inflections present in population
+		"""
+		infl_counts = np.zeros(n_inflections)
+		total_inflections = 0.
+		# First, create array which counts for each inflection how many agents in population have that inflection
+		for l in range(n_lemmas):
+			for a in range(self.running_popsize):
+				if self.population[a].has_inflections(l):
+					best_infl = self.population[a].get_best(l)
+					infl_counts[best_infl] += 1
+		# Then, get the total number of inflections which has a count >0 (i.e. that is used by at least 1 agent in pop)
+		for i in range(n_inflections):
+			if infl_counts[i] > 0:
+				total_inflections += 1
+		return total_inflections
 
 	def get_entropy(self, probability_array):
-		pass
+		"""
+		Calculates the entropy from a list of probablities/frequencies
+		:param probability_array: 1D numpy array containing probabilities (i.e., should sum to 1.0)
+		:return: float: entropy
+		"""
+		entropy = 0.
+		for p in probability_array:
+			if p > 0.:
+				entropy += p * np.log2(1./p)
+		return entropy
 
 	def vocabulary_entropy(self):
-		pass
-		return
+		"""
+		Calculates entropy of inflection across the vocabulary, H_v
+		:return: float: H_v
+		"""
+		# how predictable is the inflection of any given lemma?
+		# for each lemma
+		inflection_probs = np.zeros(n_inflections)
+		denominator = 0.
+		for l in range(n_lemmas):
+			for a in range(self.running_popsize):
+				if self.population[a].vocabulary[l].has_any_inflection():
+					denominator += 1
+					best_infl = self.population[a].get_best(l)
+					inflection_probs[best_infl] += 1
+		inflection_probs = np.divide(inflection_probs, denominator)
+		return self.get_entropy(inflection_probs)
 
 	def meaning_entropy(self, lemma):
-		pass
-		return
+		"""
+		Calculates entropy of the inflection for a specific lemma, H_l
+		:param lemma: int: index of lemma that should be conditioned on
+		:return: float: H_l
+		"""
+		# what is the probability of each inflection given this lemma?
+		inflections = np.zeros(n_inflections)
+		lemma_count = 0.
+		for a in range(self.running_popsize):
+			if self.population[a].has_inflections(lemma):
+				best_infl = self.population[a].get_best(lemma)
+				inflections[best_infl] += 1.
+				lemma_count += 1.
+		inflection_probs = np.divide(inflections, lemma_count)
+		return self.get_entropy(inflection_probs)
 
 	def single_run(self, run_number):
 		"""
@@ -561,17 +590,18 @@ class Simulation:
 		:param run_number: int: index of current run
 		:return: Updates the Simulation object's attributes (specifically the results arrays); doesn't return anything
 		"""
-		print('This is the single_run method of the Simulation class:')
 		for t in range(t_timesteps):
-			print("t is:")
-			print(t)
+			if t % 50 == 0:  # after every 50 timesteps, print the current timestep, so we know where we're at:
+				print("t: "+str(t))
 			self.timestep(t)
+			total_inflections = self.inflections_in_vocab()
+			vocab_entropy = self.vocabulary_entropy()
 			for lemma_index in range(n_lemmas):
 				self.r_column[run_number + t + lemma_index] = run_number
 				self.tstep_column[run_number + t + lemma_index] = t
-				# self.infl_column[run_number + t + lemma_index] = self.inflections_in_vocab()
-				# self.vocab_entropy_column[run_number + t + lemma_index] = self.vocabulary_entropy()
-				# self.meaning_entropy_column[run_number + t + lemma_index] = self.meaning_entropy(lemma_index)
+				self.infl_column[run_number + t + lemma_index] = total_inflections
+				self.vocab_entropy_column[run_number + t + lemma_index] = vocab_entropy
+				self.meaning_entropy_column[run_number + t + lemma_index] = self.meaning_entropy(lemma_index)
 		print("self.running_popsize at end of simulation:")
 		print(self.running_popsize)
 
@@ -580,12 +610,11 @@ class Simulation:
 		Runs multiple runs of the simulation
 		:return: pandas dataframe containing all results
 		"""
-		print('')
-		print('')
-		print('This is the multi_runs method of the Simulation class:')
 		for i in range(pop_size):  # pop_size is global variable
 			self.population[i].is_active = True
 		for r in range(n_runs):
+			print('')
+			print('')
 			print("r is:")
 			print(r)
 			# First, reset self.all_tokens, self.global_inflections, and self.global_counts before starting a new run:
@@ -618,4 +647,4 @@ print("results_dataframe is:")
 print(results_dataframe)
 
 
-print("--- %s seconds ---" % (time.time() - start_time))
+print("Simulation took: %s minutes to run" % ((time.time() - start_time)/60.))
