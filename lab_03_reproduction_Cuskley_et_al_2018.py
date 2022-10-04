@@ -6,7 +6,7 @@ import seaborn as sns
 
 ###################### PARAMETER SETTINGS: ######################
 n_runs = 1  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
-pop_size = 20  # int: initial population size. Cuskley et al. (2018) used 20 for small population and 100 for large pop
+pop_size = 100  # int: initial population size. Cuskley et al. (2018) used 20 for small population and 100 for large pop
 n_lemmas = 28  # int: number of lemmas. Cuskley et al. (2018) used 28
 n_tokens = 500  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
 n_inflections = 12  # int: number of inflections. Cuskley et al. (2018) used 12
@@ -182,48 +182,6 @@ class Lemma:
 				self.inflections[i].empty_inflection()
 
 
-# my_inflections_list = [Inflection() for i in range(n_inflections)]
-# lemmas_list = []
-# for i in range(n_lemmas):
-#   lemma = Lemma(0, 0, False, my_inflections_list)
-#   lemmas_list.append(lemma)
-#
-#
-# for i in range(300):
-#   lemma_index = np.random.choice(vocabulary)
-#   lemma = lemmas_list[lemma_index]
-#   inflection_frequencies = np.array([0.01, 0.3, 0.2, 3, 0.5, 4, 0.2, 1, 0.02, 2, 0.4, 0.08])
-#   # np.random.shuffle(inflection_frequencies)
-#   inflection_probs = np.divide(inflection_frequencies.astype(float), np.sum(inflection_frequencies))
-#   infl_index = np.random.choice(np.arange(n_inflections), p=inflection_probs)
-#   outcome = np.random.randint(2)
-#   timestep = i
-#   lemma.update_inflection(infl_index, outcome, timestep)
-#
-#
-# print('')
-# print('')
-# random_lemma = np.random.choice(lemmas_list)
-# print("random_lemma.__dict__ is:")
-# print(random_lemma.__dict__)
-#
-# best_infl_index = random_lemma.get_best()
-# print('')
-# print('')
-# print("best_infl_index is:")
-# print(best_infl_index)
-#
-# has_inflection = random_lemma.has_any_inflection()
-# print('')
-# print('')
-# print("has_inflection is:")
-# print(has_inflection)
-#
-# timestep = 300
-# random_lemma.purge(timestep)
-# print("random_lemma.__dict__ is:")
-# print(random_lemma.__dict__)
-
 
 class Agent:
 	"""
@@ -398,34 +356,6 @@ class Agent:
 				return 0
 
 
-# my_agent = Agent()
-# print('')
-# print('')
-# print("my_agent.__dict__ is:")
-# print(my_agent.__dict__)
-#
-# my_agent.reset_agent()
-# print('')
-# print('')
-# print("my_agent.__dict__ AFTER RESETTING is:")
-# print(my_agent.__dict__)
-#
-# timestep = 10
-# for lemma_index in range(n_lemmas):
-# 	print('')
-# 	print("lemma_index is:")
-# 	print(lemma_index)
-# 	lemma = my_agent.vocabulary[lemma_index]
-# 	print("lemma.__dict__ is:")
-# 	print(lemma.__dict__)
-# 	has_inflections = my_agent.has_inflections(lemma_index)
-# 	print("has_inflections is:")
-# 	print(has_inflections)
-# 	for infl_index in range(n_inflections):
-# 		my_agent.receive(lemma_index, infl_index, timestep)
-# print("my_agent.__dict__ AFTER UPDATING is:")
-# print(my_agent.__dict__)
-
 
 class Simulation:
 	"""
@@ -591,7 +521,7 @@ class Simulation:
 		:return: Updates the Simulation object's attributes (specifically the results arrays); doesn't return anything
 		"""
 		for t in range(t_timesteps):
-			if t % 50 == 0:  # after every 50 timesteps, print the current timestep, so we know where we're at:
+			if t % 20 == 0:  # after every 50 timesteps, print the current timestep, so we know where we're at:
 				print("t: "+str(t))
 			self.timestep(t)
 			total_inflections = self.inflections_in_vocab()
@@ -614,9 +544,7 @@ class Simulation:
 			self.population[i].is_active = True
 		for r in range(n_runs):
 			print('')
-			print('')
-			print("r is:")
-			print(r)
+			print("r: "+str(r))
 			# First, reset self.all_tokens, self.global_inflections, and self.global_counts before starting a new run:
 			self.all_tokens = 0
 			self.global_inflections = np.zeros(12)
@@ -632,13 +560,10 @@ class Simulation:
 		results_dataframe = pd.DataFrame(results_dict)
 		return results_dataframe
 
+
 start_time = time.time()
 
 simulation = Simulation()
-# print('')
-# print('')
-# print("simulation.__dict__ is:")
-# print(simulation.__dict__)
 
 results_dataframe = simulation.multi_runs()
 print('')
@@ -646,5 +571,6 @@ print('')
 print("results_dataframe is:")
 print(results_dataframe)
 
-
 print("Simulation took: %s minutes to run" % ((time.time() - start_time)/60.))
+
+results_dataframe.to_pickle("./results_popsize_"+str(pop_size)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pkl")
