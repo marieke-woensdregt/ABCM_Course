@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
+import time
 import seaborn as sns
 
 
 ###################### PARAMETER SETTINGS: ######################
-n_runs = 100  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
+n_runs = 2  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
 pop_size = 20  # int: initial population size. Cuskley et al. (2018) used 20 for small population and 100 for large pop
 n_lemmas = 28  # int: number of lemmas. Cuskley et al. (2018) used 28
 n_tokens = 500  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
@@ -17,7 +18,7 @@ g_growth = 0.001  # float: growth rate for growth condition. Cuskley et al. (201
 # At every interaction, there's a g chance that a new learner will be *added* to the population
 replacement = True  # Boolean: determines whether this simulation includes replacement (turnover)
 growth = False  # Boolean; determines whether this simulation includes growth
-t_timesteps = 10000  # int: number of timesteps to run the simulation for. Cuskley et al. (2018) used 10,000
+t_timesteps = 3000  # int: number of timesteps to run per simulation. Cuskley et al. (2018) used 10,000
 n_interactions = pop_size  # int: number of interactions per timestep. Cuskley et al. used same as population size
 d_memory = 100  # int: no. of timesteps after which agent forgets lemma-inflection pairing. Cuskley et al. used 100
 
@@ -239,12 +240,12 @@ class Agent:
 		:param is_active: Boolean: Initial value: False  # TODO figure out what this attribute is/does exactly. When updated?
 		"""
 		self.tokens = tokens
-		empty_inflections = [Inflection() for i in range(n_inflections)]  # used for initiliasing empty vocab below
-		self.vocabulary = [Lemma(0, 0, False, empty_inflections) for x in range(n_lemmas)]  # initialise empty vocab
 		self.k_threshold = k_threshold
 		self.memory_window = memory_window
 		self.type_generalise = type_generalise
 		self.is_active = is_active
+		empty_inflections = [Inflection() for i in range(n_inflections)]  # used for initiliasing empty vocab below
+		self.vocabulary = [Lemma(0, 0, False, empty_inflections) for x in range(n_lemmas)]  # initialise empty vocab
 
 	def reset_agent(self):
 		"""
@@ -302,6 +303,9 @@ class Agent:
 		Token-generalise: Look across vocab and extend rule that was used most frequently across all tokens of any type
 		:return: int: index of inflection used across most *tokens*
 		"""
+		print('')
+		print('')
+		print('This is the get_token_best() method of the Agent class:')
 		max_tokens = np.zeros(10)  # TODO: Figure out what the idea behind this max_tokens array is
 		for lemma_index in range(len(self.vocabulary)):
 			for i in range(10):  # TODO: Where does range(len(10)) come from? Shouldn't this loop over all inflections?
@@ -324,6 +328,9 @@ class Agent:
 		Type-generalise: Look across vocab and extend the rule which applies to the most types in agent's vocab
 		:return: int: index of inflection used across most *types*
 		"""
+		print('')
+		print('')
+		print('This is the get_type_best() method of the Agent class:')
 		max_types = np.zeros(10)  # TODO: Figure out what the idea behind this max_types array is
 		for lemma_index in range(len(self.vocabulary)):
 			best_inflection = self.vocabulary[lemma_index].get_best()
@@ -372,9 +379,6 @@ class Agent:
 		:param timestep: int: timestep of current interaction
 		:return: Boolean: 1 if interaction is success (= lemma-inflection pairing in receiver's vocab), 0 otherwise
 		"""
-		print('')
-		print('')
-		print("This is the .receive() method of the Agent class:")
 		# If agent has any inflections for this lemma:
 		if self.has_inflections(lemma_index):
 			# If the agent has this particular inflection for this lemma --- no matter the weight --- return success
@@ -387,6 +391,9 @@ class Agent:
 		# If agent doesn't have any inflections for this lemma, generate inflection based on generalisation processes
 		else:
 			guess = self.generate_inflection()
+			print('')
+			print('')
+			print("This is the .receive() method of the Agent class:")
 			print("guess is:")
 			print(guess)
 			# If the newly generated inflection matches the inflection in question, return success:
@@ -435,12 +442,17 @@ class Simulation:
 		"""
 		Initialises simulation object with self.population and self.running_popsize
 		"""
-		self.population = [Agent for x in range(3000)] # Create initial pop, plus "dormant" agents to allow for growth
+		self.population = [Agent() for x in range(3000)]  # Create initial pop, plus "dormant" agents to allow for growth
 		self.running_popsize = pop_size  # int: keeps track of the changing population size in the growth condition
 		self.vocabulary = generate_vocab(n_lemmas, zipf_exponent, n_tokens)  # generate vocabulary (numpy array)
+		self.all_tokens = 0  # Keeps track of total number of tokens that have come up in interactions across timesteps
 		self.global_inflections = np.zeros(12)  # Keeps track of frequency of each inflection throughout the simulation
 		self.global_counts = np.zeros(28)  # Keeps track of the frequency of each lemma throughout the simulation
-		self.all_tokens = 0  # Keeps track of
+		self.r_column = np.zeros(n_runs*t_timesteps*n_lemmas)
+		self.tstep_column = np.zeros(n_runs*t_timesteps*n_lemmas)
+		self.infl_column = np.zeros(n_runs*t_timesteps*n_lemmas)
+		self.vocab_entropy_column = np.zeros(n_runs*t_timesteps*n_lemmas)
+		self.meaning_entropy_column = np.zeros(n_runs*t_timesteps*n_lemmas)
 
 	def interaction(self, producer, receiver, lemma, current_timestep):
 		"""
@@ -457,7 +469,7 @@ class Simulation:
 			utterance = self.population[producer].get_best(lemma)
 			result = self.population[receiver].receive(lemma, utterance, current_timestep)
 		else:
-			utterance = self.population[producer].generate_inflection(lemma)
+			utterance = self.population[producer].generate_inflection()
 			result = self.population[receiver].receive(lemma, utterance, current_timestep)
 		self.population[producer].update_lemma(lemma, utterance, result, current_timestep)
 		self.global_inflections[utterance] += 1
@@ -468,28 +480,28 @@ class Simulation:
 		(equivalent to removing the selected agent and adding a new agent)
 		:return: updates self.population by resetting the attributes of the selected agent; doesn't return anything
 		"""
-		print('')
-		print('')
-		print("This is the replace_agent() method of the Simulation class:")
 		# Generate random float from uniform dist. [0.0, 1.0); if float <= r_replacement probability: reset random agent
 		if np.random.random() <= r_replacement:
+			print('')
+			print('')
+			print("This is the replace_agent() method of the Simulation class:")
 			print('YAY! np.random.random() <= r_replacement')
-			chosen_one = np.random.choice(self.population)
-			print("chosen_one is:")
-			print(chosen_one)
-			print("chosen_one.__dict__ is:")
-			print(chosen_one.__dict__)
-			chosen_one.reset_agent()
+			chosen_one_index = np.random.choice(np.arange(self.running_popsize - 1))
+			print("self.population[chosen_one_index].__dict__ BEFORE RESETTING is:")
+			print(self.population[chosen_one_index].__dict__)
+			self.population[chosen_one_index].reset_agent()
+			print("self.population[chosen_one_index].__dict__ AFTER RESETTING is:")
+			print(self.population[chosen_one_index].__dict__)
 
 	def add_agent(self):
 		"""
 		Add agent to population in growth condition by setting one of the "dormant" agents' .is_active attribute to True
 		:return: updates self.population by adding a new agent (by setting .is_active to True); doesn't return anything
 		"""
-		print('')
-		print('')
-		print("This is the add_agent() method of the Simulation class:")
 		if np.random.random() <= g_growth:
+			print('')
+			print('')
+			print("This is the add_agent() method of the Simulation class:")
 			print('YAY! np.random.random() <= g_growth')
 			self.running_popsize += 1
 			print("self.population[self.running_popsize - 1].__dict__ BEFORE UPDATING")
@@ -506,41 +518,20 @@ class Simulation:
 		:return: Updates attributes of population and its agents based on the interactions they go through,
 		and whether the replacement and growth conditions are turned on or off (see global variables)
 		"""
-		print('')
-		print('')
-		print("This is the timestep() method of the Simulation class:")
 		vocab_index = 0
 		for i in range(n_interactions):
-			print("i is:")
-			print(i)
 			# Randomly select producer and receiver agent:
-			producer = np.random.choice(self.population)
-			receiver = np.random.choice(self.population)
+			producer_index = np.random.choice(np.arange(self.running_popsize-1))
+			receiver_index = np.random.choice(np.arange(self.running_popsize-1))
 			# Make sure producer and receiver are not the same agent:
-			while producer == receiver:
-				receiver = np.random.choice(self.population)
-			print("producer.__dict__ is:")
-			print(producer.__dict__)
-			print("receiver.__dict__ is:")
-			print(receiver.__dict__)
+			while producer_index == receiver_index:
+				receiver_index = np.random.choice(np.arange(self.running_popsize-1))
 			# If we've reached the end of the vocabulary array, re-shuffle it:
 			if vocab_index >= (n_tokens-1):  # TODO: Why not compare to length of self.vocabulary directly here, rather than n_tokens?
-				print("vocab_index is:")
-				print(vocab_index)
-				print("(n_tokens - 1) is:")
-				print((n_tokens-1))
-				print("vocab_index >= (n_tokens - 1) is:")
-				print(vocab_index >= (n_tokens-1))
-				print("self.vocabulary BEFORE RE-SHUFFLING is:")
-				print(self.vocabulary)
 				np.random.shuffle(self.vocabulary)
-				print("self.vocabulary AFTER RE-SHUFFLING is:")
-				print(self.vocabulary)
 				vocab_index = 0
 			topic = self.vocabulary[vocab_index]
-			print("topic is:")
-			print(topic)
-			self.interaction(producer, receiver, topic, current_timestep)
+			self.interaction(producer_index, receiver_index, topic, current_timestep)
 			if growth:  # growth is global variable (Boolean)
 				self.add_agent()
 			if replacement:  # growth is global variable (Boolean)
@@ -549,34 +540,82 @@ class Simulation:
 			self.all_tokens += 1
 			vocab_index += 1
 
+	def inflections_in_vocab(self):  # counts inflections for whole population
+		pass
+		return
+
 	def get_entropy(self, probability_array):
 		pass
 
-	def vocabulary_entropy(self, learning_type):
+	def vocabulary_entropy(self):
 		pass
+		return
 
-	def meaning_entropy(self, lemma, learning_type):
+	def meaning_entropy(self, lemma):
 		pass
+		return
 
-	def inflections_in_pop(self):  # counts inflections for whole population
-		pass
+	def single_run(self, run_number):
+		"""
+		Runs a single simulation. Each run is t_timesteps long (Cuskley et al., 2018 used 10,000)
+		:param run_number: int: index of current run
+		:return: Updates the Simulation object's attributes (specifically the results arrays); doesn't return anything
+		"""
+		print('This is the single_run method of the Simulation class:')
+		for t in range(t_timesteps):
+			print("t is:")
+			print(t)
+			self.timestep(t)
+			for lemma_index in range(n_lemmas):
+				self.r_column[run_number + t + lemma_index] = run_number
+				self.tstep_column[run_number + t + lemma_index] = t
+				# self.infl_column[run_number + t + lemma_index] = self.inflections_in_vocab()
+				# self.vocab_entropy_column[run_number + t + lemma_index] = self.vocabulary_entropy()
+				# self.meaning_entropy_column[run_number + t + lemma_index] = self.meaning_entropy(lemma_index)
+		print("self.running_popsize at end of simulation:")
+		print(self.running_popsize)
 
-	def single_run(self):  # each run is t_timesteps long (10,000)
-		pass
-
-	def run_simulation(self):
+	def multi_runs(self):
+		"""
+		Runs multiple runs of the simulation
+		:return: pandas dataframe containing all results
+		"""
+		print('')
+		print('')
+		print('This is the multi_runs method of the Simulation class:')
 		for i in range(pop_size):  # pop_size is global variable
 			self.population[i].is_active = True
+		for r in range(n_runs):
+			print("r is:")
+			print(r)
+			# First, reset self.all_tokens, self.global_inflections, and self.global_counts before starting a new run:
+			self.all_tokens = 0
+			self.global_inflections = np.zeros(12)
+			self.global_counts = np.zeros(28)
+			# Then, run a new run:
+			self.single_run(r)
+		# After all runs have finished, turn the numpy arrays with results into a pandas dataframe:
+		results_dict = {"run": self.r_column,
+						"timestep": self.tstep_column,
+						"n_inflections": self.infl_column,
+						"vocab_entropy": self.vocab_entropy_column,
+						"meaning_entropy": self.meaning_entropy_column}
+		results_dataframe = pd.DataFrame(results_dict)
+		return results_dataframe
+
+start_time = time.time()
+
+simulation = Simulation()
+# print('')
+# print('')
+# print("simulation.__dict__ is:")
+# print(simulation.__dict__)
+
+results_dataframe = simulation.multi_runs()
+print('')
+print('')
+print("results_dataframe is:")
+print(results_dataframe)
 
 
-
-
-
-
-
-
-
-
-
-
-
+print("--- %s seconds ---" % (time.time() - start_time))
