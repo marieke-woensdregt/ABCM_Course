@@ -583,28 +583,7 @@ class Simulation:
 		return results_dataframe
 
 
-def plot_vocab_entropy(results_df):
-	with sns.color_palette("deep", 2):
-		sns.displot(data=results_df, x="vocab_entropy", hue="pop_size", kind="kde", fill=True)
-	plt.savefig("./Hv_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
-	plt.show()
-
-
-def plot_meaning_entropy_by_freq(results_df):
-	with sns.color_palette("deep", 2):
-		sns.lineplot(data=results_df, x="log_freq", y="meaning_entropy", hue="pop_size")
-	plt.savefig("./Hl_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) + "_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
-	plt.show()
-
-
-def plot_active_inflections_over_time(results_df):
-	with sns.color_palette("deep", 2):
-		sns.lineplot(data=results_df, x="timestep", y="n_inflections", hue="pop_size")
-	plt.savefig("./Inflections_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
-	plt.show()
-
-
-def run_simulation_batch(pop_sizes):
+def run_multi_sizes(pop_sizes):
 	"""
 	Runs simulations for each pop_size in pop_sizes
 	:param pop_sizes: list of ints specifying the different population sizes that should be run
@@ -627,7 +606,28 @@ def run_simulation_batch(pop_sizes):
 	return combined_dataframe
 
 
-combined_dataframe = run_simulation_batch(pop_sizes)
+def plot_vocab_entropy(results_df):
+	with sns.color_palette("deep", 2):
+		sns.displot(data=results_df, x="vocab_entropy", hue="pop_size", kind="kde", fill=True)
+	plt.savefig("./Hv_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+	plt.show()
+
+
+def plot_meaning_entropy_by_freq(results_df):
+	with sns.color_palette("deep", 2):
+		sns.lineplot(data=results_df, x="log_freq", y="meaning_entropy", hue="pop_size")
+	plt.savefig("./Hl_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) + "_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+	plt.show()
+
+
+def plot_active_inflections_over_time(results_df):
+	with sns.color_palette("deep", 2):
+		sns.lineplot(data=results_df, x="timestep", y="n_inflections", hue="pop_size")
+	plt.savefig("./Inflections_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+	plt.show()
+
+
+combined_dataframe = run_multi_sizes(pop_sizes)
 print('')
 print("combined_dataframes is:")
 print(combined_dataframe)
