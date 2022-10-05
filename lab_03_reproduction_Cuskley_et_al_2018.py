@@ -6,13 +6,13 @@ import seaborn as sns
 
 
 ###################### PARAMETER SETTINGS: ######################
-n_runs = 2  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
+n_runs = 10  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
 pop_sizes = [10, 50]  # list of ints: initial pop sizes. Cuskley et al. (2018) used 20 for small and 100 for large pop
-n_lemmas = 28  # int: number of lemmas. Cuskley et al. (2018) used 28
-n_tokens = 500  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
-n_inflections = 12  # int: number of inflections. Cuskley et al. (2018) used 12
+n_lemmas = 14  # int: number of lemmas. Cuskley et al. (2018) used 28
+n_tokens = 250  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
+n_inflections = 6  # int: number of inflections. Cuskley et al. (2018) used 12
 zipf_exponent = 2  # int: exponent used to create Zipfian frequency distribution. Cuskley et al., 2018 used 2
-k_proficiency = 1500  # int: token threshold that determines proficiency. Cuskley et al. (2018) used 1500
+k_proficiency = 750  # int: token threshold that determines proficiency. Cuskley et al. (2018) used 1500
 r_replacement = 0.001  # float: replacement rate for turnover condition. Cuskley et al. (2018) used 0.001.
 # At every interaction, there is an r chance that a randomly selected learner will be replaced by a new learner
 g_growth = 0.001  # float: growth rate for growth condition. Cuskley et al. (2018) used 0.001.
@@ -534,7 +534,7 @@ class Simulation:
 		:return: Updates the Simulation object's attributes (specifically the results arrays); doesn't return anything
 		"""
 		for t in range(t_timesteps):
-			if t % 100 == 0:  # after every 50 timesteps, print the current timestep, so we know where we're at:
+			if t % 500 == 0:  # after every 50 timesteps, print the current timestep, so we know where we're at:
 				print("t: "+str(t))
 			self.timestep(t)
 			total_inflections = self.inflections_in_vocab()
@@ -547,7 +547,7 @@ class Simulation:
 				self.lemma_column[counter] = lemma_index
 				self.log_freq_column[counter] = self.log_freqs_per_lemma[lemma_index]
 				self.infl_column[counter] = total_inflections
-				if t == t_timesteps - 1:
+				if t == t_timesteps-1:
 					self.vocab_entropy_column[counter] = vocab_entropy
 					self.meaning_entropy_column[counter] = self.meaning_entropy(lemma_index)
 				else:
@@ -637,10 +637,14 @@ print('')
 print("combined_dataframes is:")
 print(combined_dataframe)
 
+final_timestep_results = combined_dataframe[combined_dataframe["timestep"]==t_timesteps-1]
+print("final_timestep_results are:")
+print(final_timestep_results)
 
-plot_vocab_entropy(combined_dataframe)
 
-plot_meaning_entropy_by_freq(combined_dataframe)
+plot_vocab_entropy(final_timestep_results)
+
+plot_meaning_entropy_by_freq(final_timestep_results)
 
 plot_active_inflections_over_time(combined_dataframe)
 
