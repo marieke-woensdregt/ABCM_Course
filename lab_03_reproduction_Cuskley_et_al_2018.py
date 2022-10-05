@@ -584,6 +584,7 @@ class Simulation:
 
 
 def plot_vocab_entropy(results_df, both_sizes=False):
+	sns.set_palette("deep")
 	if both_sizes:
 		sns.displot(data=results_df, x="vocab_entropy", hue="pop_size", kind="kde", fill=True)
 	else:
@@ -593,6 +594,7 @@ def plot_vocab_entropy(results_df, both_sizes=False):
 
 
 def plot_meaning_entropy_by_freq(results_df, both_sizes=False):
+	sns.set_palette("deep")
 	if both_sizes:
 		sns.lineplot(data=results_df, x="log_freq", y="meaning_entropy", hue="pop_size")
 	else:
@@ -602,6 +604,7 @@ def plot_meaning_entropy_by_freq(results_df, both_sizes=False):
 
 
 def plot_active_inflections_over_time(results_df, both_sizes=False):
+	sns.set_palette("deep")
 	if both_sizes:
 		sns.lineplot(data=results_df, x="timestep", y="n_inflections", hue="pop_size")
 	else:
@@ -626,11 +629,11 @@ for pop_size in pop_sizes:
 	print(results_dataframe)
 	results_dataframe.to_pickle("./results_popsize_"+str(pop_size)+"_tsteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pkl")
 
-	plot_vocab_entropy(results_dataframe)
-
-	plot_meaning_entropy_by_freq(results_dataframe)
-
-	plot_active_inflections_over_time(results_dataframe)
+	# plot_vocab_entropy(results_dataframe)
+	#
+	# plot_meaning_entropy_by_freq(results_dataframe)
+	#
+	# plot_active_inflections_over_time(results_dataframe)
 
 	frames.append(results_dataframe)
 
