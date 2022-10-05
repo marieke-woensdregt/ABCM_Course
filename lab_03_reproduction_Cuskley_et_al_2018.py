@@ -604,30 +604,34 @@ def plot_active_inflections_over_time(results_df):
 	plt.show()
 
 
-start_time = time.time()
-frames = []
-for pop_size in pop_sizes:
-	print('')
-	print('')
-	print("pop_size is:")
-	print(pop_size)
+def run_simulation_batch(pop_sizes):
+	"""
+	Runs simulations for each pop_size in pop_sizes
+	:param pop_sizes: list of ints specifying the different population sizes that should be run
+	:return: pandas dataframe containing simulation results for all pop_sizes in pop_sizes
+	"""
+	start_time = time.time()
+	frames = []
+	# First run simulations for each of the pop_sizes:
+	for pop_size in pop_sizes:
+		print('')
+		print("pop_size is:")
+		print(pop_size)
+		simulation = Simulation(pop_size)
+		results_dataframe = simulation.multi_runs()
+		frames.append(results_dataframe)
+		print("Simulation took %s minutes to run" % round(((time.time() - start_time) / 60.), 2))
+	# Then combine the results for each of the pop_sizes into one big dataframe, so that they can be plotted together:
+	combined_dataframe = pd.concat(frames, ignore_index=True)
+	combined_dataframe.to_pickle("./results_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) + "_replacement_" + str(replacement) + "_growth_" + str(growth) + ".pkl")
+	return combined_dataframe
 
-	simulation = Simulation(pop_size)
 
-	results_dataframe = simulation.multi_runs()
-
-	frames.append(results_dataframe)
-
-	print("Simulation took %s minutes to run" % round(((time.time() - start_time)/60.), 2))
-
-
-# Some code to create a dataframe that contains the results for both population sizes, so they can be plotted together:
-combined_dataframe = pd.concat(frames, ignore_index=True)
+combined_dataframe = run_simulation_batch(pop_sizes)
 print('')
 print("combined_dataframes is:")
 print(combined_dataframe)
 
-combined_dataframe.to_pickle("./results_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) + "_replacement_" + str(replacement) + "_growth_" + str(growth) + ".pkl")
 
 plot_vocab_entropy(combined_dataframe)
 
