@@ -583,21 +583,30 @@ class Simulation:
 		return results_dataframe
 
 
-def plot_vocab_entropy(results_df):
-	sns.displot(data=results_df, x="vocab_entropy", kind="kde", fill=True)  # hue="pop_size"
-	plt.savefig("Hv_plot_pop_size_"+str(pop_size)+"tsteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+def plot_vocab_entropy(results_df, both_sizes=False):
+	if both_sizes:
+		sns.displot(data=results_df, x="vocab_entropy", hue="pop_size", kind="kde", fill=True)
+	else:
+		sns.displot(data=results_df, x="vocab_entropy", kind="kde", fill=True)
+	plt.savefig("./Hv_plot_pop_size_"+str(pop_size)+"_tsteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
 	plt.show()
 
 
-def plot_meaning_entropy_by_freq(results_df):
-	sns.lineplot(data=results_df, x="log_freq", y="meaning_entropy")  # hue="pop_size"
-	plt.savefig("Hl_plot_pop_size_"+str(pop_size)+"tsteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+def plot_meaning_entropy_by_freq(results_df, both_sizes=False):
+	if both_sizes:
+		sns.lineplot(data=results_df, x="log_freq", y="meaning_entropy", hue="pop_size")
+	else:
+		sns.lineplot(data=results_df, x="log_freq", y="meaning_entropy")
+	plt.savefig("./Hl_plot_pop_size_"+str(pop_size)+"_tsteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
 	plt.show()
 
 
-def plot_active_inflections_over_time(results_df):
-	sns.lineplot(data=results_df, x="timestep", y="n_inflections")  # hue="pop_size"
-	plt.savefig("Inflections_plot_pop_size_"+str(pop_size)+"tsteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+def plot_active_inflections_over_time(results_df, both_sizes=False):
+	if both_sizes:
+		sns.lineplot(data=results_df, x="timestep", y="n_inflections", hue="pop_size")
+	else:
+		sns.lineplot(data=results_df, x="timestep", y="n_inflections")
+	plt.savefig("./Inflections_plot_pop_size_"+str(pop_size)+"_tsteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
 	plt.show()
 
 
@@ -625,17 +634,11 @@ for pop_size in pop_sizes:
 
 	frames.append(results_dataframe)
 
-	print("Simulation took: %s minutes to run" % ((time.time() - start_time)/60.))
+	print("Simulation took: %s minutes to run" % round(((time.time() - start_time)/60.), 2))
 
 
-# Some more code to create a dataframe that contains the results for both population sizes:
+# Some code to create a dataframe that contains the results for both population sizes, so they can be plotted together:
 combined_dataframes = pd.concat(frames)
-# continued_run_column = np.concatenate((np.array(results_dataframe["run"]), np.add(np.array(results_dataframe["run"]), n_runs)))
-# print("continued_run_column is:")
-# print(continued_run_column)
-# print("continued_run_column.shape is:")
-# print(continued_run_column.shape)
-# combined_dataframes["run"] = continued_run_column
 print('')
 print("combined_dataframes is:")
 print(combined_dataframes)
@@ -650,5 +653,10 @@ print(combined_dataframes.index.duplicated())
 
 combined_dataframes.to_pickle("./combined_results_both_popsizes_tsteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pkl")
 
+plot_vocab_entropy(combined_dataframes, both_sizes=True)
+
+plot_meaning_entropy_by_freq(combined_dataframes, both_sizes=True)
+
+plot_active_inflections_over_time(combined_dataframes, both_sizes=True)
 
 
