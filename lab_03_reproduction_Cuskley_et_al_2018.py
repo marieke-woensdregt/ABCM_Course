@@ -638,7 +638,7 @@ for pop_size in pop_sizes:
 
 
 # Some code to create a dataframe that contains the results for both population sizes, so they can be plotted together:
-combined_dataframes = pd.concat(frames)
+combined_dataframes = pd.concat(frames, ignore_index=True)
 print('')
 print("combined_dataframes is:")
 print(combined_dataframes)
