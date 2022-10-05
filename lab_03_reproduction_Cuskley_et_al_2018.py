@@ -8,11 +8,11 @@ import seaborn as sns
 ###################### PARAMETER SETTINGS: ######################
 n_runs = 2  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
 pop_sizes = [10, 50]  # list of ints: initial pop sizes. Cuskley et al. (2018) used 20 for small and 100 for large pop
-n_lemmas = 14  # int: number of lemmas. Cuskley et al. (2018) used 28
-n_tokens = 250  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
-n_inflections = 6  # int: number of inflections. Cuskley et al. (2018) used 12
+n_lemmas = 28  # int: number of lemmas. Cuskley et al. (2018) used 28
+n_tokens = 500  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
+n_inflections = 12  # int: number of inflections. Cuskley et al. (2018) used 12
 zipf_exponent = 2  # int: exponent used to create Zipfian frequency distribution. Cuskley et al., 2018 used 2
-k_proficiency = 750  # int: token threshold that determines proficiency. Cuskley et al. (2018) used 1500
+k_proficiency = 1500  # int: token threshold that determines proficiency. Cuskley et al. (2018) used 1500
 r_replacement = 0.001  # float: replacement rate for turnover condition. Cuskley et al. (2018) used 0.001.
 # At every interaction, there is an r chance that a randomly selected learner will be replaced by a new learner
 g_growth = 0.001  # float: growth rate for growth condition. Cuskley et al. (2018) used 0.001.
@@ -534,11 +534,12 @@ class Simulation:
 		:return: Updates the Simulation object's attributes (specifically the results arrays); doesn't return anything
 		"""
 		for t in range(t_timesteps):
-			if t % 20 == 0:  # after every 50 timesteps, print the current timestep, so we know where we're at:
+			if t % 100 == 0:  # after every 50 timesteps, print the current timestep, so we know where we're at:
 				print("t: "+str(t))
 			self.timestep(t)
 			total_inflections = self.inflections_in_vocab()
-			vocab_entropy = self.vocabulary_entropy()
+			if t == t_timesteps-1:
+				vocab_entropy = self.vocabulary_entropy()
 			for lemma_index in range(n_lemmas):
 				self.pop_size_column[counter] = self.pop_size
 				self.r_column[counter] = run_number
@@ -546,8 +547,12 @@ class Simulation:
 				self.lemma_column[counter] = lemma_index
 				self.log_freq_column[counter] = self.log_freqs_per_lemma[lemma_index]
 				self.infl_column[counter] = total_inflections
-				self.vocab_entropy_column[counter] = self.vocabulary_entropy()
-				self.meaning_entropy_column[counter] = self.meaning_entropy(lemma_index)
+				if t == t_timesteps - 1:
+					self.vocab_entropy_column[counter] = vocab_entropy
+					self.meaning_entropy_column[counter] = self.meaning_entropy(lemma_index)
+				else:
+					self.vocab_entropy_column[counter] = np.nan
+					self.meaning_entropy_column[counter] = np.nan
 				counter += 1
 		print("self.running_popsize at end of simulation:")
 		print(self.running_popsize)
@@ -599,31 +604,31 @@ def run_multi_sizes(pop_sizes):
 		simulation = Simulation(pop_size)
 		results_dataframe = simulation.multi_runs()
 		frames.append(results_dataframe)
-		print("Simulation took %s minutes to run" % round(((time.time() - start_time) / 60.), 2))
+		print("Simulation(s) took %s minutes to run" % round(((time.time() - start_time) / 60.), 2))
 	# Then combine the results for each of the pop_sizes into one big dataframe, so that they can be plotted together:
 	combined_dataframe = pd.concat(frames, ignore_index=True)
-	combined_dataframe.to_pickle("./results_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) + "_replacement_" + str(replacement) + "_growth_" + str(growth) + ".pkl")
+	combined_dataframe.to_pickle("./results_"+"n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+"_n_lem_"+str(n_lemmas)+"_n_infl_"+str(n_inflections)+"_n_tok_"+str(n_tokens)+".pkl")
 	return combined_dataframe
 
 
 def plot_vocab_entropy(results_df):
 	with sns.color_palette("deep", 2):
 		sns.displot(data=results_df, x="vocab_entropy", hue="pop_size", kind="kde", fill=True)
-	plt.savefig("./Hv_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+	plt.savefig("./Hv_plot_"+"n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+"_n_lem_"+str(n_lemmas)+"_n_infl_"+str(n_inflections)+"_n_tok_"+str(n_tokens)+".pdf")
 	plt.show()
 
 
 def plot_meaning_entropy_by_freq(results_df):
 	with sns.color_palette("deep", 2):
 		sns.lineplot(data=results_df, x="log_freq", y="meaning_entropy", hue="pop_size")
-	plt.savefig("./Hl_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) + "_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+	plt.savefig("./Hl_plot_"+"n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+"_n_lem_"+str(n_lemmas)+"_n_infl_"+str(n_inflections)+"_n_tok_"+str(n_tokens)+".pdf")
 	plt.show()
 
 
 def plot_active_inflections_over_time(results_df):
 	with sns.color_palette("deep", 2):
 		sns.lineplot(data=results_df, x="timestep", y="n_inflections", hue="pop_size")
-	plt.savefig("./Inflections_plot_n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pdf")
+	plt.savefig("./Inflections_plot_"+"n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+"_n_lem_"+str(n_lemmas)+"_n_infl_"+str(n_inflections)+"_n_tok_"+str(n_tokens)+".pdf")
 	plt.show()
 
 
