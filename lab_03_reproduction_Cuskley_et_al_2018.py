@@ -1,29 +1,37 @@
 import numpy as np
 import pandas as pd
 import time
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 
 ###################### PARAMETER SETTINGS: ######################
 n_runs = 1  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
-pop_size = 20  # int: initial population size. Cuskley et al. (2018) used 20 for small pop and 100 for large pop
-n_lemmas = 28  # int: number of lemmas. Cuskley et al. (2018) used 28
-n_tokens = 500  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
-n_inflections = 12  # int: number of inflections. Cuskley et al. (2018) used 12
-zipf_exponent = 2  # int: exponent used to create Zipfian frequency distribution. Cuskley et al., 2018 used 2)
-k_proficiency = 1500  # int: token threshold that determines proficiency. Cuskley et al. (2018) used 1500
+pop_size = 10  # int: initial population size. Cuskley et al. (2018) used 20 for small pop and 100 for large pop
+n_lemmas = 14  # int: number of lemmas. Cuskley et al. (2018) used 28
+n_tokens = 250  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
+n_inflections = 6  # int: number of inflections. Cuskley et al. (2018) used 12
+zipf_exponent = 2  # int: exponent used to create Zipfian frequency distribution. Cuskley et al., 2018 used 2
+k_proficiency = 750  # int: token threshold that determines proficiency. Cuskley et al. (2018) used 1500
 r_replacement = 0.001  # float: replacement rate for turnover condition. Cuskley et al. (2018) used 0.001.
 # At every interaction, there is an r chance that a randomly selected learner will be replaced by a new learner
 g_growth = 0.001  # float: growth rate for growth condition. Cuskley et al. (2018) used 0.001.
 # At every interaction, there's a g chance that a new learner will be *added* to the population
 replacement = True  # Boolean: determines whether this simulation includes replacement (turnover)
 growth = False  # Boolean; determines whether this simulation includes growth
-t_timesteps = 2500  # int: number of timesteps to run per simulation. Cuskley et al. (2018) used 10,000
+t_timesteps = 1000  # int: number of timesteps to run per simulation. Cuskley et al. (2018) used 10,000
 n_interactions = pop_size  # int: number of interactions per timestep. Cuskley et al. used same as population size
 d_memory = 100  # int: no. of timesteps after which agent forgets lemma-inflection pairing. Cuskley et al. used 100
 
 
-def generate_vocab(n_lemmas, zipf_exponent, n_tokens):  # TODO: Turn this into method of Simulation class?
+def generate_vocab(n_lemmas, zipf_exponent, n_tokens):
+	"""
+	Generates a vocabulary (numpy array of n_tokens tokens of n_lemmas types, with Zipfian frequency distribution)
+	:param n_lemmas: int: number of lemmas
+	:param zipf_exponent: int: exponent used to create Zipfian frequency distribution. Cuskley et al., 2018 used 2
+	:param n_tokens: int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
+	:return: (1) numpy array containing n_tokens tokens of n_lemmas types; (2) numpy array with log frequency per lemma
+	"""
 	lemma_indices = np.arange(n_lemmas)  # create numpy array with index for each lemma
 	zipf_dist = np.random.zipf(zipf_exponent, size=n_lemmas)  # create Zipfian frequency distribution for lemmas
 	zipf_dist_in_probs = np.divide(zipf_dist, np.sum(zipf_dist))
@@ -41,7 +49,7 @@ def generate_vocab(n_lemmas, zipf_exponent, n_tokens):  # TODO: Turn this into m
 			vocabulary = np.delete(vocabulary, random_indices)
 	np.random.shuffle(vocabulary)  # finally, shuffle the array so that tokens of lemmas occur in random order
 	vocabulary = vocabulary.astype(int)
-	return vocabulary
+	return vocabulary, np.log(zipf_dist_in_probs)
 
 
 class Inflection:
@@ -191,11 +199,11 @@ class Agent:
 				 is_active=False):
 		"""
 		Initialises Agent object
-		:param tokens: int: number of tokens. Initial value: 0  # TODO: figure out what this attribute is/does exactly.
+		:param tokens: int: number of tokens seen by the agent in total. Initial value: 0
 		:param k_threshold: int: token threshold that determines proficiency. Default: k_proficiency (=global variable)
 		:param memory_window: int: no. of timesteps after which agent forgets pairing. Default: d_memory (=global var.)
 		:param type_generalise: Boolean: False = agent is token-generaliser; True = type-generaliser. Initial: False
-		:param is_active: Boolean: Initial value: False  # TODO figure out what this attribute is/does exactly. When updated?
+		:param is_active: Boolean: Initial value: False. Agent's status gets changed to active when it gets added to pop
 		"""
 		self.tokens = tokens
 		self.k_threshold = k_threshold
@@ -367,12 +375,14 @@ class Simulation:
 		"""
 		self.population = [Agent() for x in range(3000)]  # Create initial pop, plus "dormant" agents to allow for growth
 		self.running_popsize = pop_size  # int: keeps track of the changing population size in the growth condition
-		self.vocabulary = generate_vocab(n_lemmas, zipf_exponent, n_tokens)  # generate vocabulary (numpy array)
+		self.vocabulary, self.log_freqs_per_lemma = generate_vocab(n_lemmas, zipf_exponent, n_tokens)  # generate vocab
 		self.all_tokens = 0  # Keeps track of total number of tokens that have come up in interactions across timesteps
 		self.global_inflections = np.zeros(12)  # Keeps track of frequency of each inflection throughout the simulation
 		self.global_counts = np.zeros(28)  # Keeps track of the frequency of each lemma throughout the simulation
 		self.r_column = np.zeros(n_runs*t_timesteps*n_lemmas)
 		self.tstep_column = np.zeros(n_runs*t_timesteps*n_lemmas)
+		self.lemma_column = np.zeros(n_runs*t_timesteps*n_lemmas)
+		self.log_freq_column = np.zeros(n_runs * t_timesteps * n_lemmas)
 		self.infl_column = np.zeros(n_runs*t_timesteps*n_lemmas)
 		self.vocab_entropy_column = np.zeros(n_runs*t_timesteps*n_lemmas)
 		self.meaning_entropy_column = np.zeros(n_runs*t_timesteps*n_lemmas)
@@ -529,8 +539,10 @@ class Simulation:
 			for lemma_index in range(n_lemmas):
 				self.r_column[counter] = run_number
 				self.tstep_column[counter] = t
+				self.lemma_column[counter] = lemma_index
+				self.log_freq_column[counter] = self.log_freqs_per_lemma[lemma_index]
 				self.infl_column[counter] = total_inflections
-				self.vocab_entropy_column[counter] = vocab_entropy
+				self.vocab_entropy_column[counter] = self.vocabulary_entropy()
 				self.meaning_entropy_column[counter] = self.meaning_entropy(lemma_index)
 				counter += 1
 		print("self.running_popsize at end of simulation:")
@@ -557,6 +569,8 @@ class Simulation:
 		# After all runs have finished, turn the numpy arrays with results into a pandas dataframe:
 		results_dict = {"run": self.r_column,
 						"timestep": self.tstep_column,
+						"lemma": self.lemma_column,
+						"log_freq": self.log_freq_column,
 						"n_inflections": self.infl_column,
 						"vocab_entropy": self.vocab_entropy_column,
 						"meaning_entropy": self.meaning_entropy_column}
@@ -564,16 +578,51 @@ class Simulation:
 		return results_dataframe
 
 
+def plot_vocab_entropy(combined_results_df):
+	sns.displot(data=combined_results_df, x="vocab_entropy", hue="pop_size", kind="kde", fill=True)
+	plt.show()
+
+
+def plot_meaning_entropy_by_freq(combined_results_df):
+	sns.lineplot(data=combined_results_df, x="log_freq", y="meaning_entropy", hue="pop_size")
+	plt.show()
+
+
+def plot_active_inflections_over_time(combined_results_df):
+	sns.lineplot(data=combined_results_df, x="timestep", y="n_inflections", hue="pop_size")
+	plt.show()
+
+
+
 start_time = time.time()
+frames = []
+for pop_size in [10, 50]:
+	print('')
+	print('')
+	print("pop_size is:")
+	print(pop_size)
 
-simulation = Simulation()
+	simulation = Simulation()
 
-results_dataframe = simulation.multi_runs()
+	results_dataframe = simulation.multi_runs()
+	print('')
+	print("results_dataframe is:")
+	print(results_dataframe)
+	results_dataframe.to_pickle("./results_popsize_"+str(pop_size)+"_timesteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pkl")
+
+	frames.append(results_dataframe)
+
+	print("Simulation took: %s minutes to run" % ((time.time() - start_time)/60.))
+
+combined_dataframes = pd.concat(frames)
 print('')
-print('')
-print("results_dataframe is:")
-print(results_dataframe)
+print("combined_dataframes is:")
+print(combined_dataframes)
+combined_dataframes.to_pickle("./combined_results_both_popsizes_timesteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pkl")
 
-print("Simulation took: %s minutes to run" % ((time.time() - start_time)/60.))
 
-results_dataframe.to_pickle("./results_popsize_"+str(pop_size)+"_timesteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pkl")
+plot_vocab_entropy(combined_dataframes)
+
+plot_meaning_entropy_by_freq(combined_dataframes)
+
+plot_active_inflections_over_time(combined_dataframes)
