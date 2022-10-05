@@ -6,7 +6,7 @@ import seaborn as sns
 
 ###################### PARAMETER SETTINGS: ######################
 n_runs = 1  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
-pop_size = 100  # int: initial population size. Cuskley et al. (2018) used 20 for small population and 100 for large pop
+pop_size = 20  # int: initial population size. Cuskley et al. (2018) used 20 for small pop and 100 for large pop
 n_lemmas = 28  # int: number of lemmas. Cuskley et al. (2018) used 28
 n_tokens = 500  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
 n_inflections = 12  # int: number of inflections. Cuskley et al. (2018) used 12
@@ -18,7 +18,7 @@ g_growth = 0.001  # float: growth rate for growth condition. Cuskley et al. (201
 # At every interaction, there's a g chance that a new learner will be *added* to the population
 replacement = True  # Boolean: determines whether this simulation includes replacement (turnover)
 growth = False  # Boolean; determines whether this simulation includes growth
-t_timesteps = 3000  # int: number of timesteps to run per simulation. Cuskley et al. (2018) used 10,000
+t_timesteps = 2500  # int: number of timesteps to run per simulation. Cuskley et al. (2018) used 10,000
 n_interactions = pop_size  # int: number of interactions per timestep. Cuskley et al. used same as population size
 d_memory = 100  # int: no. of timesteps after which agent forgets lemma-inflection pairing. Cuskley et al. used 100
 
@@ -514,7 +514,7 @@ class Simulation:
 		inflection_probs = np.divide(inflections, lemma_count)
 		return self.get_entropy(inflection_probs)
 
-	def single_run(self, run_number):
+	def single_run(self, run_number, counter):
 		"""
 		Runs a single simulation. Each run is t_timesteps long (Cuskley et al., 2018 used 10,000)
 		:param run_number: int: index of current run
@@ -527,13 +527,15 @@ class Simulation:
 			total_inflections = self.inflections_in_vocab()
 			vocab_entropy = self.vocabulary_entropy()
 			for lemma_index in range(n_lemmas):
-				self.r_column[run_number + t + lemma_index] = run_number
-				self.tstep_column[run_number + t + lemma_index] = t
-				self.infl_column[run_number + t + lemma_index] = total_inflections
-				self.vocab_entropy_column[run_number + t + lemma_index] = vocab_entropy
-				self.meaning_entropy_column[run_number + t + lemma_index] = self.meaning_entropy(lemma_index)
+				self.r_column[counter] = run_number
+				self.tstep_column[counter] = t
+				self.infl_column[counter] = total_inflections
+				self.vocab_entropy_column[counter] = vocab_entropy
+				self.meaning_entropy_column[counter] = self.meaning_entropy(lemma_index)
+				counter += 1
 		print("self.running_popsize at end of simulation:")
 		print(self.running_popsize)
+		return counter
 
 	def multi_runs(self):
 		"""
@@ -542,6 +544,7 @@ class Simulation:
 		"""
 		for i in range(pop_size):  # pop_size is global variable
 			self.population[i].is_active = True
+		counter = 0
 		for r in range(n_runs):
 			print('')
 			print("r: "+str(r))
@@ -550,7 +553,7 @@ class Simulation:
 			self.global_inflections = np.zeros(12)
 			self.global_counts = np.zeros(28)
 			# Then, run a new run:
-			self.single_run(r)
+			counter = self.single_run(r, counter)
 		# After all runs have finished, turn the numpy arrays with results into a pandas dataframe:
 		results_dict = {"run": self.r_column,
 						"timestep": self.tstep_column,
@@ -573,4 +576,4 @@ print(results_dataframe)
 
 print("Simulation took: %s minutes to run" % ((time.time() - start_time)/60.))
 
-results_dataframe.to_pickle("./results_popsize_"+str(pop_size)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pkl")
+results_dataframe.to_pickle("./results_popsize_"+str(pop_size)+"_timesteps_"+str(t_timesteps)+"_replacement_"+str(replacement)+"_growth_"+str(growth)+".pkl")
