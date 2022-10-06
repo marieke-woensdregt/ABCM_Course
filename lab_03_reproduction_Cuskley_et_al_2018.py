@@ -7,19 +7,19 @@ import seaborn as sns
 
 ###################### PARAMETER SETTINGS: ######################
 n_runs = 10  # int: number of independent simulation runs. Cuskley et al. (2018) used 100
-pop_sizes = [10, 50]  # list of ints: initial pop sizes. Cuskley et al. (2018) used 20 for small and 100 for large pop
-n_lemmas = 14  # int: number of lemmas. Cuskley et al. (2018) used 28
-n_tokens = 250  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
-n_inflections = 6  # int: number of inflections. Cuskley et al. (2018) used 12
+pop_sizes = [20, 100]  # list of ints: initial pop sizes. Cuskley et al. (2018) used 20 for small and 100 for large pop
+n_lemmas = 28  # int: number of lemmas. Cuskley et al. (2018) used 28
+n_tokens = 500  # int: number of tokens in vocabulary. Cuskley et al. seem to have used 500 (in C++ implementation)
+n_inflections = 12  # int: number of inflections. Cuskley et al. (2018) used 12
 zipf_exponent = 2  # int: exponent used to create Zipfian frequency distribution. Cuskley et al., 2018 used 2
-k_proficiency = 750  # int: token threshold that determines proficiency. Cuskley et al. (2018) used 1500
+k_proficiency = 1500  # int: token threshold that determines proficiency. Cuskley et al. (2018) used 1500
 r_replacement = 0.001  # float: replacement rate for turnover condition. Cuskley et al. (2018) used 0.001.
 # At every interaction, there is an r chance that a randomly selected learner will be replaced by a new learner
 g_growth = 0.001  # float: growth rate for growth condition. Cuskley et al. (2018) used 0.001.
 # At every interaction, there's a g chance that a new learner will be *added* to the population
 replacement = True  # Boolean: determines whether this simulation includes replacement (turnover)
 growth = False  # Boolean; determines whether this simulation includes growth
-t_timesteps = 3000  # int: number of timesteps to run per simulation. Cuskley et al. (2018) used 10,000
+t_timesteps = 10000  # int: number of timesteps to run per simulation. Cuskley et al. (2018) used 10,000
 d_memory = 100  # int: no. of timesteps after which agent forgets lemma-inflection pairing. Cuskley et al. used 100
 
 
@@ -282,24 +282,13 @@ class Agent:
 		Type-generalise: Look across vocab and extend the rule which applies to the most types in agent's vocab
 		:return: int: index of inflection used across most *types*
 		"""
-		print('')
-		print('')
-		print('WOOOOHOOOO!! This is the get_type_best() method of the Agent class:')
 		max_types = np.zeros(n_inflections)  # TODO: Figure out why C++ code of Cuskley et al. (2018) uses 10 instead of 12 here
 		for lemma_index in range(len(self.vocabulary)):
 			best_inflection = self.vocabulary[lemma_index].get_best()
 			max_types[best_inflection] += 1
-		print("max_types are:")
-		print(max_types)
 		max_values = np.amax(max_types)
-		print("max_values is:")
-		print(max_values)
-		max_token_indices = np.where(max_types == max_values)[0]
-		print("max_token_indices is:")
-		print(max_token_indices)
-		max_index = np.random.choice(max_token_indices)
-		print("max_index is:")
-		print(max_index)
+		max_type_indices = np.where(max_types == max_values)[0]
+		max_index = np.random.choice(max_type_indices)
 		return max_index
 
 	def generate_inflection(self):
@@ -308,21 +297,12 @@ class Agent:
 		:return: int: index of newly generated (/generalised) inflection
 		"""
 		inflection_utterance = np.nan
-		# If self.type_generalise is True (= when agent has exceeded k_threshold), find inflection used for most types
-		if self.type_generalise:
-			print('')
-			print('')
-			print("This is the generate_inflection() method of the Agent class")
-			print("self.type_generalise is True!")
+		# If self.type_generalise is True (= when agent has exceeded k_threshold), find inflection used for most types:
+		if self.type_generalise is True:
 			inflection_utterance = self.get_type_best()
-			print("inflection_utterance after type-generalising is:")
-			print(inflection_utterance)
 			# If preferred generalisation process doesn't provide inflection, try other method (token-generalise)
 			if np.isnan(inflection_utterance):
-				print("apparently inflection after type-generalising is NAN")
 				inflection_utterance = self.get_token_best()
-				print("inflection_utterance after token-generalising is:")
-				print(inflection_utterance)
 		# If self.type_generalise is False (=agent hasn't reached k_threshold yet) find inflection used for most tokens
 		else:
 			inflection_utterance = self.get_token_best()
@@ -517,6 +497,9 @@ class Simulation:
 		:return: float: H_l
 		"""
 		# what is the probability of each inflection given this lemma?
+		# print('')
+		# print('')
+		# print("This is the meaning_entropy() method of the Simulation class:")
 		inflections = np.zeros(n_inflections)
 		lemma_count = 0.
 		for a in range(self.running_popsize):
@@ -525,6 +508,15 @@ class Simulation:
 				inflections[best_infl] += 1.
 				lemma_count += 1.
 		inflection_probs = np.divide(inflections, lemma_count)
+		# print("inflection_probs is:")
+		# print(inflection_probs)
+		# print("np.sum(inflection_probs) is:")
+		# print(np.sum(inflection_probs))
+		# inflection_probs_new = np.divide(inflections, np.sum(inflections))
+		# print("inflection_probs_new is:")
+		# print(inflection_probs_new)
+		# print("np.sum(inflection_probs_new) is:")
+		# print(np.sum(inflection_probs_new))
 		return self.get_entropy(inflection_probs)
 
 	def single_run(self, run_number, counter):
@@ -573,6 +565,12 @@ class Simulation:
 			self.all_tokens = 0
 			self.global_inflections = np.zeros(n_inflections)
 			self.global_counts = np.zeros(n_lemmas)
+
+
+			# TODO: Trying this out:
+			self.vocabulary, self.log_freqs_per_lemma = generate_vocab(n_lemmas, zipf_exponent, n_tokens)  # generate vocab
+
+
 			# Then, run a new run:
 			counter = self.single_run(r, counter)
 		# After all runs have finished, turn the numpy arrays with results into a pandas dataframe:
@@ -612,6 +610,7 @@ def run_multi_sizes(pop_sizes):
 
 
 def plot_vocab_entropy(results_df):
+	sns.set_style("darkgrid")
 	with sns.color_palette("deep", 2):
 		sns.displot(data=results_df, x="vocab_entropy", hue="pop_size", kind="kde", fill=True)
 	plt.savefig("./Hv_plot_"+"n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+"_n_lem_"+str(n_lemmas)+"_n_infl_"+str(n_inflections)+"_n_tok_"+str(n_tokens)+".pdf")
@@ -619,6 +618,7 @@ def plot_vocab_entropy(results_df):
 
 
 def plot_meaning_entropy_by_freq(results_df):
+	sns.set_style("darkgrid")
 	with sns.color_palette("deep", 2):
 		sns.lineplot(data=results_df, x="log_freq", y="meaning_entropy", hue="pop_size")
 	plt.savefig("./Hl_plot_"+"n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+"_n_lem_"+str(n_lemmas)+"_n_infl_"+str(n_inflections)+"_n_tok_"+str(n_tokens)+".pdf")
@@ -626,6 +626,7 @@ def plot_meaning_entropy_by_freq(results_df):
 
 
 def plot_active_inflections_over_time(results_df):
+	sns.set_style("darkgrid")
 	with sns.color_palette("deep", 2):
 		sns.lineplot(data=results_df, x="timestep", y="n_inflections", hue="pop_size")
 	plt.savefig("./Inflections_plot_"+"n_runs_"+str(n_runs)+"_tsteps_" + str(t_timesteps) +"_replacement_"+str(replacement)+"_growth_"+str(growth)+"_n_lem_"+str(n_lemmas)+"_n_infl_"+str(n_inflections)+"_n_tok_"+str(n_tokens)+".pdf")
